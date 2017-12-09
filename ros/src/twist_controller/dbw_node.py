@@ -72,6 +72,8 @@ class DBWNode(object):
             #                                                     <any other argument you need>)
             # if <dbw is enabled>:
             #   self.publish(throttle, brake, steer)
+            self.publish(10,0,0)
+            # rospy.loginfo("~~:Hello")
             rate.sleep()
 
     def publish(self, throttle, brake, steer):

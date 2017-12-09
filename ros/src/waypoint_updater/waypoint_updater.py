@@ -23,8 +23,6 @@ TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 
 LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this number
 
-TEST TEXT!!!
-
 class WaypointUpdater(object):
     def __init__(self):
         rospy.init_node('waypoint_updater')
@@ -33,21 +31,59 @@ class WaypointUpdater(object):
         rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
 
         # TODO: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
-
-
+        rospy.loginfo("~~:a")
         self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
 
         # TODO: Add other member variables you need below
+        self.base_waypoints = None # Waypoints from the course
+        self.current_pose = None # Vehicls current position
 
-        rospy.spin()
+        rospy.loginfo('~~:b')
+        # rospy.spin()
+        rospy.loginfo('~~:c')
+        self.loop()
+
+    def loop(self):
+        rate = rospy.Rate(10)
+
+        while not rospy.is_shutdown():
+
+            if self.current_pose is None:
+                continue
+
+            rospy.loginfo('~~:Current Position-  x:{}, y:{}'.format(self.current_pose.position.x, self.current_pose.position.y))
+
+            rate.sleep()
+        
 
     def pose_cb(self, msg):
         # TODO: Implement
+        # self.current_pose = msg.
+        
+        # pos has stucture:
+        # geometry_msgs/Point position
+        #     float64 x
+        #     float64 y
+        #     float64 z
+        # geometry_msgs/Quaternion orientation
+        #     float64 x
+        #     float64 y
+        #     float64 z
+        #     float64 w
+        self.current_pose = msg.pose
         pass
 
-    def waypoints_cb(self, waypoints):
+
+    def waypoints_cb(self, msg):
         # TODO: Implement
-        pass
+        # pos = msg.waypoints[0].pose.pose.position
+        # rospy.loginfo('~~:Hello!')
+        # rospy.loginfo('~~:{}'.format(pos.x))
+        # pass
+        
+        # Called once, save the waypoints
+        self.base_waypoints = msg.waypoints
+
 
     def traffic_cb(self, msg):
         # TODO: Callback for /traffic_waypoint message. Implement
