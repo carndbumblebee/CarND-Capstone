@@ -57,6 +57,7 @@ class DBWNode(object):
         # self.controller = TwistController(<Arguments you wish to provide>)
 
         # TODO: Subscribe to all the topics you need to
+        # rospy.Subscriber('/twist_cmd', TwistStamped, self.twist_cmd_cb)
 
         self.loop()
 
@@ -72,8 +73,8 @@ class DBWNode(object):
             #                                                     <any other argument you need>)
             # if <dbw is enabled>:
             #   self.publish(throttle, brake, steer)
-            self.publish(10,0,0)
-            # rospy.loginfo("~~:Hello")
+            self.publish(1,0,0)
+            # rospy.loginfo("~~:Here")
             rate.sleep()
 
     def publish(self, throttle, brake, steer):
@@ -93,6 +94,10 @@ class DBWNode(object):
         bcmd.pedal_cmd_type = BrakeCmd.CMD_TORQUE
         bcmd.pedal_cmd = brake
         self.brake_pub.publish(bcmd)
+
+    # def twist_cmd_cb(self, msg):
+    #     # rospy.loginfo('~~:x:{} y:{} z:{} | ax:{} ay:{} az:{}'.format(msg.twist.linear.x,msg.twist.linear.y,msg.twist.linear.z,msg.twist.angular.x,msg.twist.angular.y,msg.twist.angular.z))
+    #     pass
 
 
 if __name__ == '__main__':

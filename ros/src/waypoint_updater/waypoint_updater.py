@@ -31,7 +31,6 @@ class WaypointUpdater(object):
         rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
 
         # TODO: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
-        rospy.loginfo("~~:a")
         self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
 
         # TODO: Add other member variables you need below
@@ -41,9 +40,7 @@ class WaypointUpdater(object):
         self.frame_id = None # frame id??
         self.new_waypoints = None # New waypoints to send to the vehicle
 
-        rospy.loginfo('~~:b')
-        # rospy.spin()
-        rospy.loginfo('~~:c')
+        rospy.loginfo('~~:Starting Waypoint Updater Loop')
         self.loop()
 
     def loop(self):
@@ -58,8 +55,10 @@ class WaypointUpdater(object):
             self.closest_idx = self.get_closest_waypoint(self.current_pose, self.base_waypoints)
             self.new_waypoints = self.load_new_waypoints(self.closest_idx, self.base_waypoints)
 
+            rospy.loginfo('~~:Closest Waypoint - x:{}, y:{}'.format(self.new_waypoints[0].pose.pose.position.x, self.new_waypoints[0].pose.pose.position.y))
             lane = self.create_new_lane(self.frame_id, self.new_waypoints)
             self.final_waypoints_pub.publish(lane)
+
 
             rate.sleep()
         
@@ -130,7 +129,7 @@ class WaypointUpdater(object):
         closest_idx = 0
 
         for idx, waypoint in enumerate(waypoints):
-            dist = distance_between_two_points(current_pose.position, waypoint.pose.pose.position)
+            dist = self.distance_between_two_points(current_pose.position, waypoint.pose.pose.position)
 
             if dist < min_dist:
                 min_dist = dist
