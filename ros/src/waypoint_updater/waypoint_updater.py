@@ -51,11 +51,11 @@ class WaypointUpdater(object):
             if self.current_pose is None:
                 continue
 
-            rospy.loginfo('~~:Current Position-  x:{}, y:{}'.format(self.current_pose.position.x, self.current_pose.position.y))
+            # rospy.loginfo('~~:Current Position-  x:{}, y:{}'.format(self.current_pose.position.x, self.current_pose.position.y))
             self.closest_idx = self.get_closest_waypoint(self.current_pose, self.base_waypoints)
             self.new_waypoints = self.load_new_waypoints(self.closest_idx, self.base_waypoints)
 
-            rospy.loginfo('~~:Closest Waypoint - x:{}, y:{}'.format(self.new_waypoints[0].pose.pose.position.x, self.new_waypoints[0].pose.pose.position.y))
+            # rospy.loginfo('~~:Closest Waypoint - x:{}, y:{}'.format(self.new_waypoints[0].pose.pose.position.x, self.new_waypoints[0].pose.pose.position.y))
             lane = self.create_new_lane(self.frame_id, self.new_waypoints)
             self.final_waypoints_pub.publish(lane)
 

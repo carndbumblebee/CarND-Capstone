@@ -7,6 +7,8 @@ from geometry_msgs.msg import TwistStamped
 import math
 
 from twist_controller import Controller
+from lowpass import LowPassFilter
+from yaw_controller import YawController
 
 '''
 You can build this node only after you have built (or partially built) the `waypoint_updater` node.
@@ -56,8 +58,21 @@ class DBWNode(object):
         # TODO: Create `TwistController` object
         # self.controller = TwistController(<Arguments you wish to provide>)
 
+        # Low Pass filter for the yaw angle
+        #self.filter_yaw = LowPassFilter()
+
+        # Yaw Controller
+        self.controller_yaw = YawController(wheel_base, steer_ratio, 0.0, max_lat_accel, max_steer_angle)
+
+
         # TODO: Subscribe to all the topics you need to
-        # rospy.Subscriber('/twist_cmd', TwistStamped, self.twist_cmd_cb)
+        rospy.Subscriber('/twist_cmd', TwistStamped, self.twist_cmd_cb)
+        rospy.Subscriber('/current_velocity', TwistStamped, self.current_vel_cb)
+
+        # Class Memebers
+        self.linear_vel_des = None
+        self.angular_vel_des = None
+        self.current_vel = None
 
         self.loop()
 
@@ -73,7 +88,11 @@ class DBWNode(object):
             #                                                     <any other argument you need>)
             # if <dbw is enabled>:
             #   self.publish(throttle, brake, steer)
-            self.publish(1,0,0)
+            if self.linear_vel_des is None or self.angular_vel_des is None or self.current_vel is None:
+                continue
+            
+            steering_angle = self.controller_yaw.get_steering(self.linear_vel_des, self.angular_vel_des, self.current_vel)
+            self.publish(0.5,0,steering_angle)
             # rospy.loginfo("~~:Here")
             rate.sleep()
 
@@ -95,9 +114,13 @@ class DBWNode(object):
         bcmd.pedal_cmd = brake
         self.brake_pub.publish(bcmd)
 
-    # def twist_cmd_cb(self, msg):
-    #     # rospy.loginfo('~~:x:{} y:{} z:{} | ax:{} ay:{} az:{}'.format(msg.twist.linear.x,msg.twist.linear.y,msg.twist.linear.z,msg.twist.angular.x,msg.twist.angular.y,msg.twist.angular.z))
-    #     pass
+    def twist_cmd_cb(self, msg):
+        # rospy.loginfo('~~:x:{} y:{} z:{} | ax:{} ay:{} az:{}'.format(msg.twist.linear.x,msg.twist.linear.y,msg.twist.linear.z,msg.twist.angular.x,msg.twist.angular.y,msg.twist.angular.z))
+        self.angular_vel_des = msg.twist.angular.z
+        self.linear_vel_des = msg.twist.linear.x
+    
+    def current_vel_cb(self, msg):
+        self.current_vel = msg.twist.linear.x
 
 
 if __name__ == '__main__':
