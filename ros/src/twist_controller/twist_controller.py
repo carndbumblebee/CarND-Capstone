@@ -75,6 +75,8 @@ class Controller(object):
         # Calc the throttle and brake
         output = self.controller_speed.step(error, ts)
 
+        # rospy.loginfo('~~:output: {}'.format(output))
+
         if output > 0:
             throttle = output
         elif output < -self.brake_deadband:

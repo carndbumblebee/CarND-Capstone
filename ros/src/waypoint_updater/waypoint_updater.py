@@ -6,6 +6,7 @@ from styx_msgs.msg import Lane, Waypoint
 from std_msgs.msg import Int32
 
 import math
+import copy
 
 '''
 This node will publish waypoints from the car's current position to some `x` distance ahead.
@@ -59,7 +60,7 @@ class WaypointUpdater(object):
 
             # rospy.loginfo('~~:Current Position-  x:{}, y:{}'.format(self.current_pose.position.x, self.current_pose.position.y))
             self.closest_idx = self.get_closest_waypoint(self.current_pose, self.base_waypoints)
-            self.new_waypoints = self.load_new_waypoints(self.closest_idx, self.base_waypoints)
+            self.new_waypoints = self.load_new_waypoints(self.closest_idx)
 
             # rospy.loginfo('~~:Closest Waypoint - x:{}, y:{}'.format(self.new_waypoints[0].pose.pose.position.x, self.new_waypoints[0].pose.pose.position.y))
             lane = self.create_new_lane(self.frame_id, self.new_waypoints)
@@ -149,33 +150,50 @@ class WaypointUpdater(object):
         dy = p1.y - p2.y
         return dx*dx + dy*dy
 
-    def load_new_waypoints(self, start_idx, waypoints):
+    def load_new_waypoints(self, start_idx):
         """ Creates a list of new waypoints starting from the idx of the closest waypoint """
 
         # Check that there are enough points left
-        end_idx = min(len(waypoints), start_idx + LOOKAHEAD_WPS)
+        end_idx = min(len(self.base_waypoints), start_idx + LOOKAHEAD_WPS)
 
-        new_waypoints = waypoints[start_idx:end_idx]
+        # new_waypoints = []
+        # for i in range(end_idx-start_idx):
+        #     new_waypoints.append(self.base_waypoints[start_idx+i])
+
+        new_waypoints = copy.deepcopy(self.base_waypoints[start_idx:end_idx])
+        # rospy.loginfo('~~:wp speed: {}'.format(self.get_waypoint_velocity(self.base_waypoints[start_idx])))
+        # rospy.loginfo('~~:new_wp speed: {}'.format(self.get_waypoint_velocity(new_waypoints[0])))
+        # new_waypoints[0].twist.twist.linear.x = 100
+        # rospy.loginfo('~~:wp speed: {}'.format(self.get_waypoint_velocity(self.base_waypoints[start_idx])))
+        # rospy.loginfo('~~:new_wp speed: {}'.format(self.get_waypoint_velocity(new_waypoints[0])))
 
         if self.upcoming_traffic_light is None:
             return new_waypoints
 
-        rospy.loginfo('~~:current_vel: {}'.format(self.convert_ms_to_kph(self.current_velocity)))
+        # rospy.loginfo('~~:current_vel: {}'.format(self.convert_ms_to_kph(self.current_velocity)))
 
         if self.upcoming_traffic_light != -1:
+
+            # Remove waypoints after lights
             dist_to_slow = self.upcoming_traffic_light - start_idx
 
-            if dist_to_slow > 1:
-                speed_decrease = self.convert_ms_to_kph(self.current_velocity) / dist_to_slow
+            if dist_to_slow > 0.5:
+                speed_decrease = self.current_velocity / dist_to_slow
             else:
                 speed_decrease = 0
 
-            rospy.loginfo('~~:dist_to_slow: {} | speed_decrease: {}'.format(dist_to_slow, speed_decrease))
-            # speed = self.convert_ms_to_kph(self.current_velocity)
-            # for i in range(dist_to_slow):
-            #     new_waypoints[i].twist.twist.linear.x = speed
-            #     speed = max(0, speed-speed_decrease)
-            #     rospy.loginfo('~~:speed:{}'.format(speed))
+            # rospy.loginfo('~~:dist_to_slow: {} | speed_decrease: {}'.format(dist_to_slow, speed_decrease))
+            speed = self.current_velocity
+            for i in range(dist_to_slow):
+                speed = max(0, speed-speed_decrease)
+                # speed = 20
+                self.set_waypoint_velocity(new_waypoints, i, speed)
+                # rospy.loginfo('~~:speed:{}'.format(speed))
+
+            # rospy.loginfo('~~:Speed tlwp: {}'.format(new_waypoints[dist_to_slow-1].twist.twist.linear.x))
+        # for i in range(10):
+            # rospy.loginfo('~~:wp {} - speed: {}'.format(i, self.get_waypoint_velocity(new_waypoints[i])))
+
 
         return new_waypoints
 

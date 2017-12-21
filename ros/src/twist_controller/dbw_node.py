@@ -73,7 +73,6 @@ class DBWNode(object):
             throttle, brake, steer = self.controller.control(self.twist_cmd_msg, self.current_vel_msg, self.dbw_enabled)
 
             self.publish(throttle,brake,steer)
-            # rospy.loginfo("~~:Here")
             rate.sleep()
 
     def publish(self, throttle, brake, steer):
