@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
 import rospy
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, TwistStamped
 from styx_msgs.msg import Lane, Waypoint
+from std_msgs.msg import Int32
 
 import math
 
@@ -29,6 +30,8 @@ class WaypointUpdater(object):
 
         rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
         rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
+        rospy.Subscriber('/traffic_waypoint', Int32, self.traffic_waypoint_cb)
+        rospy.Subscriber('/current_velocity', TwistStamped, self.current_velocity_cb)
 
 
         # TODO: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
@@ -40,6 +43,8 @@ class WaypointUpdater(object):
         self.closest_idx = None # index to the closest waypoint
         self.frame_id = None # frame id??
         self.new_waypoints = None # New waypoints to send to the vehicle
+        self.upcoming_traffic_light = None
+        self.current_velocity = None
 
         rospy.loginfo('~~:Starting Waypoint Updater Loop')
         self.loop()
@@ -86,23 +91,24 @@ class WaypointUpdater(object):
 
 
     def waypoints_cb(self, msg):
-        # TODO: Implement
-        # pos = msg.waypoints[0].pose.pose.position
-        # rospy.loginfo('~~:Hello!')
-        # rospy.loginfo('~~:{}'.format(pos.x))
-        # pass
-        
+        # TODO: Implement        
         # Called once, save the waypoints
         self.base_waypoints = msg.waypoints
+        
 
 
-    def traffic_cb(self, msg):
+    def traffic_waypoint_cb(self, msg):
         # TODO: Callback for /traffic_waypoint message. Implement
+        self.upcoming_traffic_light = msg.data
         pass
 
     def obstacle_cb(self, msg):
         # TODO: Callback for /obstacle_waypoint message. We will implement it later
         pass
+
+    def current_velocity_cb(self, msg):
+        self.current_velocity = msg.twist.linear.x
+
 
 #endregion
 
@@ -148,7 +154,30 @@ class WaypointUpdater(object):
 
         # Check that there are enough points left
         end_idx = min(len(waypoints), start_idx + LOOKAHEAD_WPS)
-        return waypoints[start_idx:end_idx]
+
+        new_waypoints = waypoints[start_idx:end_idx]
+
+        if self.upcoming_traffic_light is None:
+            return new_waypoints
+
+        rospy.loginfo('~~:current_vel: {}'.format(self.convert_ms_to_kph(self.current_velocity)))
+
+        if self.upcoming_traffic_light != -1:
+            dist_to_slow = self.upcoming_traffic_light - start_idx
+
+            if dist_to_slow > 1:
+                speed_decrease = self.convert_ms_to_kph(self.current_velocity) / dist_to_slow
+            else:
+                speed_decrease = 0
+
+            rospy.loginfo('~~:dist_to_slow: {} | speed_decrease: {}'.format(dist_to_slow, speed_decrease))
+            # speed = self.convert_ms_to_kph(self.current_velocity)
+            # for i in range(dist_to_slow):
+            #     new_waypoints[i].twist.twist.linear.x = speed
+            #     speed = max(0, speed-speed_decrease)
+            #     rospy.loginfo('~~:speed:{}'.format(speed))
+
+        return new_waypoints
 
     def create_new_lane(self, frame_id, waypoints):
         new_lane = Lane()
@@ -156,6 +185,9 @@ class WaypointUpdater(object):
         new_lane.waypoints = waypoints
         new_lane.header.stamp = rospy.Time.now()
         return new_lane
+
+    def convert_ms_to_kph(self, speed_ms):
+        return speed_ms*3.6
 
 
 #endregion
