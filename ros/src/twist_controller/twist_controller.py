@@ -66,7 +66,11 @@ class Controller(object):
         ts = rospy.get_time() - self.prev_time
         self.prev_time = rospy.get_time()
 
+        # rospy.loginfo('~~:desired: {} current: {}'.format(linear_vel_desired, linear_vel_current))
+
         error = linear_vel_desired - linear_vel_current
+
+        # rospy.loginfo('~~:error: {}'.format(error))
 
         # Calc the throttle and brake
         output = self.controller_speed.step(error, ts)
