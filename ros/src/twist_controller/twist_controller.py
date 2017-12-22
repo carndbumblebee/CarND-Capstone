@@ -29,7 +29,8 @@ class Controller(object):
         self.controller_steer = YawController(self.wheel_base, self.steer_ratio, 0.0, self.max_lat_accel, self.max_steer_angle)
 
         # PID Controller for the throttle and brake
-        self.controller_speed = PID(1.0,0.01,0.0)
+        self.controller_throttle = PID(5.0,0.01,0.0)
+        self.controller_brake = PID(100.0, 0.01, 0.0)
 
         self.prev_time = None
 
@@ -48,7 +49,7 @@ class Controller(object):
             return throttle, brake, steer
 
         if not dbw_enabled:
-            self.controller_speed.reset()
+            self.controller_throttle.reset()
             return throttle, brake, steer
 
         # Grab the velocities and targets
@@ -66,23 +67,34 @@ class Controller(object):
         ts = rospy.get_time() - self.prev_time
         self.prev_time = rospy.get_time()
 
-        # rospy.loginfo('~~:desired: {} current: {}'.format(linear_vel_desired, linear_vel_current))
+        rospy.loginfo('~~:desired: {} current: {}'.format(linear_vel_desired, linear_vel_current))
 
         error = linear_vel_desired - linear_vel_current
 
-        # rospy.loginfo('~~:error: {}'.format(error))
+        if linear_vel_desired == 0.0:
+            self.controller_brake.reset()
+            self.controller_throttle.reset()
+            brake = 1000
+        elif error > -self.brake_deadband:
+            throttle = self.controller_throttle.step(error, ts)
+            self.controller_brake.reset()
+        else:
+            brake = self.controller_brake.step(abs(error), ts)
+            self.controller_throttle.reset()
+
+        rospy.loginfo('~~:error: {} | throttle: {}, brake: {}, steer: {}'.format(error, throttle, brake, steer))
 
         # Calc the throttle and brake
-        output = self.controller_speed.step(error, ts)
+        # output = self.controller_throttle.step(error, ts)
 
         # rospy.loginfo('~~:output: {}'.format(output))
 
-        if output > 0:
-            throttle = output
-        elif output < -self.brake_deadband:
-            brake = output
-        else:
-            self.controller_speed.reset()
+        # if output > 0:
+        #     throttle = output
+        # elif output < -self.brake_deadband:
+        #     brake = output
+        # else:
+        #     self.controller_throttle.reset()
         
         # Return throttle, brake, steer
         return throttle, brake, steer

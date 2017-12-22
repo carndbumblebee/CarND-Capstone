@@ -156,43 +156,27 @@ class WaypointUpdater(object):
         # Check that there are enough points left
         end_idx = min(len(self.base_waypoints), start_idx + LOOKAHEAD_WPS)
 
-        # new_waypoints = []
-        # for i in range(end_idx-start_idx):
-        #     new_waypoints.append(self.base_waypoints[start_idx+i])
-
         new_waypoints = copy.deepcopy(self.base_waypoints[start_idx:end_idx])
-        # rospy.loginfo('~~:wp speed: {}'.format(self.get_waypoint_velocity(self.base_waypoints[start_idx])))
-        # rospy.loginfo('~~:new_wp speed: {}'.format(self.get_waypoint_velocity(new_waypoints[0])))
-        # new_waypoints[0].twist.twist.linear.x = 100
-        # rospy.loginfo('~~:wp speed: {}'.format(self.get_waypoint_velocity(self.base_waypoints[start_idx])))
-        # rospy.loginfo('~~:new_wp speed: {}'.format(self.get_waypoint_velocity(new_waypoints[0])))
 
         if self.upcoming_traffic_light is None:
             return new_waypoints
 
-        # rospy.loginfo('~~:current_vel: {}'.format(self.convert_ms_to_kph(self.current_velocity)))
-
         if self.upcoming_traffic_light != -1:
-
-            # Remove waypoints after lights
-            dist_to_slow = self.upcoming_traffic_light - start_idx
+            dist_to_slow = (self.upcoming_traffic_light - start_idx) - 5 # Want to be 0 at least 5 steps before
 
             if dist_to_slow > 0.5:
                 speed_decrease = self.current_velocity / dist_to_slow
             else:
                 speed_decrease = 0
 
-            # rospy.loginfo('~~:dist_to_slow: {} | speed_decrease: {}'.format(dist_to_slow, speed_decrease))
-            speed = self.current_velocity
-            for i in range(dist_to_slow):
-                speed = max(0, speed-speed_decrease)
-                # speed = 20
-                self.set_waypoint_velocity(new_waypoints, i, speed)
-                # rospy.loginfo('~~:speed:{}'.format(speed))
+            rospy.loginfo('~~:dist_to_slow: {} | speed_decrease: {} | current_speed: {}'.format(dist_to_slow, speed_decrease, self.current_velocity))
 
-            # rospy.loginfo('~~:Speed tlwp: {}'.format(new_waypoints[dist_to_slow-1].twist.twist.linear.x))
-        # for i in range(10):
-            # rospy.loginfo('~~:wp {} - speed: {}'.format(i, self.get_waypoint_velocity(new_waypoints[i])))
+            speed = self.current_velocity
+            for i in range(len(new_waypoints)):
+                speed = max(0, speed-speed_decrease)
+                if speed <= 1:
+                    speed = 0
+                self.set_waypoint_velocity(new_waypoints, i, speed)
 
 
         return new_waypoints
