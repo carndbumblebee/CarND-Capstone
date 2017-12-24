@@ -1,42 +1,28 @@
 from styx_msgs.msg import TrafficLight
 
 import numpy as np
-import os
+import cv2
 import tensorflow as tf
+import rospy
 
 class TLClassifier(object):
     def __init__(self):
-        # What model to download.
-        model_name = 'ssd_mobilenet_v1_coco_2017_11_17'
-        model_name = model_name + '.tar.gz'
+        MODEL_NAME = 'ssd_mobilenet_v1_coco_2017_11_17'
 
         # Path to frozen detection graph. This is the actual model that is used for the object detection.
-        path_to_ckpt = model_name + '/frozen_inference_graph.pb'
-
-        # List of the strings that is used to add correct label for each box.
-        path_to_labels = os.path.join('data', 'mscoco_label_map.pbtxt')
+        PATH_TO_CKPT = MODEL_NAME + '/frozen_inference_graph.pb'
 
         # Load a (frozen) Tensorflow model into memory
         self.detection_graph = tf.Graph()
-        with detection_graph.as_default():
+        with self.detection_graph.as_default():
             od_graph_def = tf.GraphDef()
-            with tf.gfile.GFile(path_to_ckpt, 'rb') as fid:
+            with tf.gfile.GFile(PATH_TO_CKPT, 'rb') as fid:
                 serialized_graph = fid.read()
                 od_graph_def.ParseFromString(serialized_graph)
                 tf.import_graph_def(od_graph_def, name='')
-
-            self.sess = tf.Session(graph=self.detection_graph, config=config)
-            self.image_tensor = self.detection_graph.get_tensor_by_name('image_tensor:0')
-            # Each box represents a part of the image where a particular object was detected.
-            self.boxes = self.detection_graph.get_tensor_by_name('detection_boxes:0')
-            # Each score represent how level of confidence for each of the objects.
-            # Score is shown on the result image, together with the class label.
-            self.scores =self.detection_graph.get_tensor_by_name('detection_scores:0')
-            self.classes = self.detection_graph.get_tensor_by_name('detection_classes:0')
-            self.num_detections =self.detection_graph.get_tensor_by_name('num_detections:0')
     
     # Helper code
-    def load_image_into_numpy_array(image):
+    def load_image_into_numpy_array(self, image):
         (im_width, im_height) = image.size
         return np.array(image.getdata()).reshape(
             (im_height, im_width, 3)).astype(np.uint8)
@@ -51,5 +37,7 @@ class TLClassifier(object):
             int: ID of traffic light color (specified in styx_msgs/TrafficLight)
 
         """
+        rospy.loginfo('~~:Does the code get here?')
+
         #TODO implement light color prediction
-        return TrafficLight.UNKNOWN
+        return TrafficLight.GREEN
