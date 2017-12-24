@@ -49,7 +49,6 @@ class TLDetector(object):
         self.last_state = TrafficLight.UNKNOWN
         self.last_wp = -1
         self.state_count = 0
-        self.has_image = True
 
         rospy.spin()
 
@@ -71,6 +70,7 @@ class TLDetector(object):
             msg (Image): image from car-mounted camera
 
         """
+        self.has_image = True
 
         self.camera_image = msg
         light_wp, state = self.process_traffic_lights()
@@ -104,6 +104,8 @@ class TLDetector(object):
 
         """
         #TODO implement
+        if self.waypoints is None:
+            return
 
         # loop through the base waypoints and find the closest one
         min_dist = float("inf")
