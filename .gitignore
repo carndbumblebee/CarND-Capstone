@@ -13,3 +13,7 @@ ros/src/twist_controller/steers.csv
 ros/src/twist_controller/throttles.csv
 
 data/dbw_test\.rosbag\.bag
+
+ros/src/tl_detector/light_classification/dataset_train_rgb/*
+
+ros/src/tl_detector/light_classification/traffic_light_images/*
