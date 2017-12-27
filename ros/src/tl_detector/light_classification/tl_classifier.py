@@ -21,7 +21,8 @@ def tl_light_classifier(image):
     green_threshold = (200, 255)
     red_threshold = (200, 255)
 
-    red = sub_image[:, :, 0]
+    # colour space is BGR
+    red = sub_image[:, :, 2]
     green = sub_image[:, :, 1]
 
     green_binary = np.zeros_like(green)
@@ -113,7 +114,7 @@ class TLClassifier(object):
 
         box = np.array([nbox[0]*height, nbox[1]*width, nbox[2]*height, nbox[3]*width]).astype(int)
 
-        rospy.loginfo('~~:box: {}'.format(box))
+        #rospy.loginfo('~~:box: {}'.format(box))
 
         tl_image = image[box[0]:box[2], box[1]:box[3]]
         #cv2.imwrite('tl_image_' + str(self.number_of_images) + '.jpg', tl_image)
