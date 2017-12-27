@@ -9,6 +9,39 @@ import rospy
 def load_image_into_numpy_array(image):
     return np.asarray(image, dtype="uint8")
 
+def tl_light_classifier(image):
+    '''
+    manually classifies the traffic light colour
+    '''
+    width_to_trim = int(image.shape[1] / 3)
+    height_to_trim = int(image.shape[0] / 8)
+    sub_image = image[height_to_trim:(image.shape[0]-height_to_trim),
+                      width_to_trim:(image.shape[1]-width_to_trim)]
+
+    green_threshold = (200, 255)
+    red_threshold = (200, 255)
+
+    red = sub_image[:, :, 0]
+    green = sub_image[:, :, 1]
+
+    green_binary = np.zeros_like(green)
+    green_binary[(green > green_threshold[0]) & (green <= green_threshold[1])] = 1
+
+    red_binary = np.zeros_like(red)
+    red_binary[(red > red_threshold[0]) & (red <= red_threshold[1])] = 1
+
+    is_red = (np.sum(red_binary) / red_binary.size) > 0.05
+    is_green = (np.sum(green_binary) / green_binary.size) > 0.05
+
+    if is_red and is_green:
+        return TrafficLight.YELLOW
+    elif is_red:
+        return TrafficLight.RED
+    elif is_green:
+        return TrafficLight.GREEN
+    else:
+        return TrafficLight.UNKNOWN
+
 class TLClassifier(object):
     def __init__(self):
         MODEL_NAME = 'ssd_mobilenet_v1_coco_2017_11_17'
@@ -83,8 +116,8 @@ class TLClassifier(object):
         rospy.loginfo('~~:box: {}'.format(box))
 
         tl_image = image[box[0]:box[2], box[1]:box[3]]
-
         #cv2.imwrite('tl_image_' + str(self.number_of_images) + '.jpg', tl_image)
         #self.number_of_images += 1
-        #TODO implement light color prediction
-        return TrafficLight.GREEN
+
+        return tl_light_classifier(tl_image)
+
