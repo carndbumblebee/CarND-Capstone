@@ -13,6 +13,8 @@ class TLClassifier(object):
     def __init__(self):
         MODEL_NAME = 'ssd_mobilenet_v1_coco_2017_11_17'
 
+        #self.number_of_images = 0
+
         # Path to frozen detection graph. This is the actual model that is used for the object detection.
         PATH_TO_CKPT = MODEL_NAME + '/frozen_inference_graph.pb'
 
@@ -82,7 +84,7 @@ class TLClassifier(object):
 
         tl_image = image[box[0]:box[2], box[1]:box[3]]
 
-        cv2.imwrite('tl_image.jpg', tl_image)
-
+        #cv2.imwrite('tl_image_' + str(self.number_of_images) + '.jpg', tl_image)
+        #self.number_of_images += 1
         #TODO implement light color prediction
         return TrafficLight.GREEN
