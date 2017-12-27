@@ -21,8 +21,8 @@ def tl_light_classifier(image):
     green_threshold = (200, 255)
     red_threshold = (200, 255)
 
-    # colour space is BGR
-    red = sub_image[:, :, 2]
+    # colour space is RGB
+    red = sub_image[:, :, 0]
     green = sub_image[:, :, 1]
 
     green_binary = np.zeros_like(green)
@@ -105,7 +105,7 @@ class TLClassifier(object):
         if scores[idx] < 0.1:
             return TrafficLight.UNKNOWN
 
-        rospy.loginfo('~~:idx: {}'.format(idx))
+        # rospy.loginfo('~~:idx: {}'.format(idx))
 
         nbox = boxes[idx]
 

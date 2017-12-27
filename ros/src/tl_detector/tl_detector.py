@@ -139,7 +139,7 @@ class TLDetector(object):
             self.prev_light_loc = None
             return False
 
-        cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
+        cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "rgb8")
 
         #Get classification
         return self.light_classifier.get_classification(cv_image)
@@ -174,8 +174,8 @@ class TLDetector(object):
 
         if light:
             state = self.get_light_state(light)
-            # rospy.loginfo('~~:Close Traffic Light. Current State: {}'.format(state))
-            # rospy.loginfo('~~:Close Traffic Light. light_wp: {}'.format(light_wp))
+            rospy.loginfo('~~:Close Traffic Light. Current State: {}'.format(state))
+            rospy.loginfo('~~:Close Traffic Light. light_wp: {}'.format(light_wp))
             return light_wp, state
 
         return -1, TrafficLight.UNKNOWN
