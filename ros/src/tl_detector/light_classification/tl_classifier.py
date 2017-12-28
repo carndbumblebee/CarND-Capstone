@@ -14,7 +14,8 @@ def tl_light_classifier(image):
     manually classifies the traffic light colour
     '''
     width_to_trim = int(image.shape[1] / 3)
-    height_to_trim = int(image.shape[0] / 10)
+    # height_to_trim = int(image.shape[0] / 10)
+    height_to_trim = 0
     sub_image = image[height_to_trim:(image.shape[0]-height_to_trim),
                       width_to_trim:(image.shape[1]-width_to_trim)]
 
@@ -36,9 +37,10 @@ def tl_light_classifier(image):
     red_binary = np.zeros_like(red)
     red_binary[(red > red_threshold[0]) & (red <= red_threshold[1])] = 1
 
-    is_red = (np.sum(red_binary) / red_binary.size) > 0.05
-    is_green = (np.sum(green_binary) / green_binary.size) > 0.05
-    is_blue = (np.sum(blue_binary) / blue_binary.size) > 0.05
+    threshold = 0.08
+    is_red = (np.sum(red_binary) / red_binary.size) > threshold
+    is_green = (np.sum(green_binary) / green_binary.size) > threshold
+    is_blue = (np.sum(blue_binary) / blue_binary.size) > threshold
 
     if is_red and is_green and is_blue:
         return TrafficLight.GREEN
@@ -55,6 +57,7 @@ class TLClassifier(object):
     def __init__(self):
         # MODEL_NAME = 'ssd_mobilenet_v1_coco_2017_11_17'
         MODEL_NAME = '..\\faster_rcnn_inception_v2_coco_2017_11_08'
+
         #self.number_of_images = 0
 
         # Path to frozen detection graph. This is the actual model that is used for the object detection.
@@ -129,4 +132,3 @@ class TLClassifier(object):
         #self.number_of_images += 1
 
         return tl_light_classifier(tl_image)
-
