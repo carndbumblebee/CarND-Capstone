@@ -5,7 +5,7 @@ This is the team project repo for the final project of the Udacity Self-Driving 
 ## Team Members
 | Name        | E-mail           |
 | ------------- |-------------|
-| Oliver Steiner <br> (**Team Lead**)      | scrottty |
+| Oliver Steiner <br> (**Team Lead**)      | ollie.steiner@me.com |
 | Po-Yen (David) Liu      | jaxanc@gmail.com |
 
 ### Native Installation

@@ -119,7 +119,7 @@ class Controller(object):
                 brake = 0.0
 
 
-        rospy.loginfo('~~:desired: {} current: {}'.format(linear_vel_desired, linear_vel_current))
-        rospy.loginfo('~~:error: {} | throttle: {}, brake: {}, steer: {}'.format(error, throttle, brake, steer))
+        # rospy.loginfo('~~:desired: {} current: {}'.format(linear_vel_desired, linear_vel_current))
+        # rospy.loginfo('~~:error: {} | throttle: {}, brake: {}, steer: {}'.format(error, throttle, brake, steer))
 
         return throttle, brake*self.max_braking, steer
