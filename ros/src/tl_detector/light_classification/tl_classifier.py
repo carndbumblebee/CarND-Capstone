@@ -55,8 +55,8 @@ def tl_light_classifier(image):
 
 class TLClassifier(object):
     def __init__(self):
-        # MODEL_NAME = 'ssd_mobilenet_v1_coco_2017_11_17'
-        MODEL_NAME = '..\\faster_rcnn_inception_v2_coco_2017_11_08'
+        MODEL_NAME = 'ssd_mobilenet_v1_coco_2017_11_17'
+        # MODEL_NAME = 'faster_rcnn_inception_v2_coco_2017_11_08'
 
         #self.number_of_images = 0
 
