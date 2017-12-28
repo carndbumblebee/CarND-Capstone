@@ -26,7 +26,7 @@ def tl_light_classifier(image):
     # colour space is RGB
     red = sub_image[:, :, 0]
     green = sub_image[:, :, 1]
-    blue = sub_image[:, :, 1]
+    blue = sub_image[:, :, 2]
 
     blue_binary = np.zeros_like(blue)
     blue_binary[(blue > blue_threshold[0]) & (blue <= blue_threshold[1])] = 1
