@@ -42,8 +42,20 @@ def tl_light_classifier(image):
     is_green = (np.sum(green_binary) / green_binary.size) > threshold
     is_blue = (np.sum(blue_binary) / blue_binary.size) > threshold
 
+    top_image = green_binary[0:int(green_binary.shape[0]/2), :]
+    bottom_image = green_binary[int(green_binary.shape[0]/2):green_binary.shape[0], :]
+
+    if np.sum(bottom_image) == 0:
+        is_edge = True
+    elif np.sum(top_image) / np.sum(bottom_image) > 5:
+        is_edge = True
+    else:
+        is_edge = False
+    
     if is_red and is_green and is_blue:
         return TrafficLight.GREEN
+    elif is_red and is_green and is_edge:
+        return TrafficLight.RED
     elif is_red and is_green:
         return TrafficLight.YELLOW
     elif is_red:
