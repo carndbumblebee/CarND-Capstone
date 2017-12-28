@@ -29,18 +29,14 @@ class Controller(object):
 
         # Yaw Controller for the steering control
         self.controller_steer = YawController(self.wheel_base, self.steer_ratio, 0.0, self.max_lat_accel, self.max_steer_angle)
+        self.prev_steer_value = 0.0
 
         # PID Controller for the throttle and brake
-        self.controller_throttle = PID(3.0,0.1,0.0)
-        self.controller_brake = PID(4.0, 0.0, 0.0)
-
-        # Low Pass Filter for Brake
-        self.filter_brake = LowPassFilter(0.5, 0.02)
-        self.filter_error = LowPassFilter(2, 0.5)
+        self.controller_throttle = PID(2.0,0.2,0.0)
+        self.controller_brake = PID(0.05, 0.0, 0.0)
 
         # Brake Values
-        # self.max_braking = (self.vehicle_mass + self.fuel_capacity*GAS_DENSITY_KG_M3) * self.decel_limit * self.wheel_radius
-        # self.min_braking = 0
+        self.max_braking = 20000
 
         self.prev_time = None
 
@@ -62,6 +58,7 @@ class Controller(object):
 
         if not dbw_enabled:
             self.controller_throttle.reset()
+            self.controller_brake.reset()
             return throttle, brake, steer
 
         # Grab the velocities and targets
@@ -76,67 +73,53 @@ class Controller(object):
                                                     angular_vel_desired,
                                                     linear_vel_current)
 
+        # When slowing down the steer controller is susceptible to large values, make those values smaller
+        if steer > 1.5:
+            steer = steer/40
 
         # Calculate the throttle and brake based upon a proportional amount
         # See https://carnd.slack.com/archives/C6NVDVAQ3/p1506389845000004
-
         error = abs(linear_vel_desired) - abs(linear_vel_current)
         ts = rospy.get_time() - self.prev_time
         self.prev_time = rospy.get_time()
-        
+
+        # If we want to be stopped and are less than a certain speed then full brakes
+        if linear_vel_desired == 0.0 and linear_vel_current < 2.0:
+            throttle = 0.0
+            brake = 1.0
+            self.controller_brake.reset()
+            self.controller_throttle.reset()
+
         # If speeding up
-        if error > 0.01:
+        elif error > 0.01:
             # First check if desired is 0, if so stop the car completely
             if linear_vel_desired <= 0.0:
                 throttle = 0.0
                 brake = 1.0
                 self.controller_throttle.reset()
+                self.controller_brake.reset()
+            elif linear_vel_desired <= 1.5: # This is for rolling forward slowly
+                throttle = 0.0
+                brake = 0.0
+                self.controller_throttle.reset()
+                self.controller_brake.reset()
             else: # Calculate the throttle as a proportion of the desired vel
                 throttle = min(self.controller_throttle.step(error/linear_vel_desired, ts), self.max_throttle_percentage)
                 self.controller_brake.reset()
         
         # If slowing down but moving calc braking as a proportion of the current vel
-        elif linear_vel_current > 0.1:
-            brake = min(self.controller_brake.step(abs(error)/linear_vel_current,ts), 1.0)
-            self.controller_throttle.reset()
-
-        else: # Slowing down and slow moving
-            throttle = 0.0
-            brake = 1.0
-            self.controller_throttle.reset()
+        elif linear_vel_current > 1.0:
+            # If greater than the deadband
+            if abs(error) > self.brake_deadband:
+                brake = min(self.controller_brake.step(abs(error)/linear_vel_current,ts), 1.0)
+                self.controller_throttle.reset()
+            # Small Controller overshoot. Just do nothing let the car settle back to the speed limit, dont reset the controllers
+            else:
+                throttle = 0.0
+                brake = 0.0
 
 
         rospy.loginfo('~~:desired: {} current: {}'.format(linear_vel_desired, linear_vel_current))
-
-        # error = linear_vel_desired - linear_vel_current
-        # error = self.filter_error.filt(error)
-
-        # if linear_vel_desired == 0.0:
-        #     self.controller_brake.reset()
-        #     self.controller_throttle.reset()
-        #     brake = self.max_braking
-        # elif error > -self.brake_deadband:
-        #     throttle = self.controller_throttle.step(error, ts)
-        #     self.controller_brake.reset()
-        # else:
-            # brake = self.controller_brake.step(abs(error), ts)
-            # brake = self.filter_brake.filt(brake)
-
-            # self.controller_throttle.reset()
-
         rospy.loginfo('~~:error: {} | throttle: {}, brake: {}, steer: {}'.format(error, throttle, brake, steer))
 
-        # Calc the throttle and brake
-        # output = self.controller_throttle.step(error, ts)
-
-        # rospy.loginfo('~~:output: {}'.format(output))
-
-        # if output > 0:
-        #     throttle = output
-        # elif output < -self.brake_deadband:
-        #     brake = output
-        # else:
-        #     self.controller_throttle.reset()
-        
-        # Return throttle, brake, steer
-        return throttle, brake, steer
+        return throttle, brake*self.max_braking, steer

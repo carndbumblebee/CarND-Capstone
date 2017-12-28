@@ -25,8 +25,8 @@ TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 '''
 
 LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this number
-SLOW_DOWN_DIST = 100
-STOP_DIST = 5
+SLOW_DOWN_DIST = 50
+STOP_DIST = 3
 
 class WaypointUpdater(object):
     def __init__(self):
@@ -64,11 +64,9 @@ class WaypointUpdater(object):
             if self.current_pose is None or self.base_waypoints is None or self.upcoming_traffic_light is None:
                 continue
 
-            # rospy.loginfo('~~:Current Position-  x:{}, y:{}'.format(self.current_pose.position.x, self.current_pose.position.y))
             self.closest_idx = self.get_closest_waypoint(self.current_pose, self.base_waypoints)
             self.new_waypoints = self.load_new_waypoints(self.closest_idx)
 
-            # rospy.loginfo('~~:Closest Waypoint - x:{}, y:{}'.format(self.new_waypoints[0].pose.pose.position.x, self.new_waypoints[0].pose.pose.position.y))
             lane = self.create_new_lane(self.frame_id, self.new_waypoints)
             self.final_waypoints_pub.publish(lane)
 
@@ -115,13 +113,6 @@ class WaypointUpdater(object):
     def load_new_waypoints(self, start_idx):
         """ Creates a list of new waypoints starting from the idx of the closest waypoint """
 
-        # Check that there are enough points left
-        # end_idx = min(len(self.base_waypoints), start_idx + LOOKAHEAD_WPS)
-        # new_waypoints = copy.deepcopy(self.base_waypoints[start_idx:end_idx])
-
-        # if self.upcoming_traffic_light is None:
-        #     return new_waypoints
-
         # Decision Making
         if self.upcoming_traffic_light == -1:
             self.state = 'GO'
@@ -131,11 +122,11 @@ class WaypointUpdater(object):
 
             rospy.loginfo('~~:dist to tl: {}'.format(dist_to_tl))
 
-            if dist_to_tl > SLOW_DOWN_DIST: # dont need to slow down till within 100m
+            if dist_to_tl > SLOW_DOWN_DIST: # dont need to slow down till within x m
                 self.state = 'GO'
-            elif dist_to_tl > STOP_DIST: # Slow down when more than 5m away
+            elif dist_to_tl > STOP_DIST: # Slow down when more than x m away
                 self.state = 'SLOW'
-            else: # Stop when within 5m of the TL
+            else: # Stop when within x m of the TL
                 self.state = 'STOP'
 
         # Waypoint creation
@@ -145,38 +136,17 @@ class WaypointUpdater(object):
 
             if self.state == 'GO':
                 new_velocity = self.get_waypoint_velocity(waypoint)
-                # rospy.loginfo('~~:1')
             
             elif self.state == 'SLOW':
                 dist_to_tl = self.distance(self.base_waypoints, start_idx+idx, self.upcoming_traffic_light)
                 new_velocity = self.velocity_profile(dist_to_tl)
-                # rospy.loginfo('~~:2')
 
             else:
                 new_velocity = 0.0
-                # rospy.loginfo('~~:3')
 
             self.set_waypoint_velocity([waypoint], 0, new_velocity)
 
             new_waypoints.append(waypoint)
-
-        # if self.upcoming_traffic_light != -1:
-        #     dist_to_slow = (self.upcoming_traffic_light - start_idx) - 5 # Want to be 0 at least 5 steps before
-
-        #     if dist_to_slow > 0.5:
-        #         speed_decrease = self.current_velocity / dist_to_slow
-        #     else:
-        #         speed_decrease = 0
-
-        #     rospy.loginfo('~~:dist_to_slow: {} | speed_decrease: {} | current_speed: {}'.format(dist_to_slow, speed_decrease, self.current_velocity))
-
-        #     speed = self.current_velocity
-        #     for i in range(len(new_waypoints)):
-        #         speed = max(0, speed-speed_decrease)
-        #         if speed <= 1:
-        #             speed = 0
-        #         # rospy.loginfo('~~:Speed: {}'.format(speed))
-        #         self.set_waypoint_velocity(new_waypoints, i, speed)
 
         return new_waypoints
 
@@ -199,13 +169,12 @@ class WaypointUpdater(object):
         else:
             return self.velocity_curve(-distance) # negative distance for the curve. No reason, justs looks better in plot
 
-
     def create_curve(self):
-        x = [-SLOW_DOWN_DIST,-5,-4,-3,-2,-1,0,1,2,3,4,5] # distances
-        y = [self.max_velocity,0,0,0,0,0,0,0,0,0,0,0] # speeds
+        x = [-SLOW_DOWN_DIST, -STOP_DIST]
+        y = [self.max_velocity, 0]
 
         # fit curve to the profile
-        coeffs = np.polyfit(x,y,2)
+        coeffs = np.polyfit(x,y,1)
         self.velocity_curve = np.poly1d(coeffs)
 
 
