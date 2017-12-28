@@ -12,7 +12,7 @@ import cv2
 import yaml
 
 STATE_COUNT_THRESHOLD = 3
-DIST_FORWARD_VISIBILE = 80
+DIST_FORWARD_VISIBILE = 200
 
 class TLDetector(object):
     def __init__(self):
@@ -154,6 +154,11 @@ class TLDetector(object):
             int: ID of traffic light color (specified in styx_msgs/TrafficLight)
 
         """
+
+        if self.waypoints is None:
+            return -1, TrafficLight.UNKNOWN
+
+        
         light = None
         light_wp = None
 

@@ -4,6 +4,8 @@ import rospy
 from std_msgs.msg import Bool
 from dbw_mkz_msgs.msg import ThrottleCmd, SteeringCmd, BrakeCmd, SteeringReport
 from geometry_msgs.msg import TwistStamped
+from styx_msgs.msg import Lane, Waypoint
+
 import math
 
 from twist_controller import Controller
@@ -49,6 +51,7 @@ class DBWNode(object):
         rospy.Subscriber('/twist_cmd', TwistStamped, self.twist_cmd_cb)
         rospy.Subscriber('/current_velocity', TwistStamped, self.current_vel_cb)
         rospy.Subscriber('/vehicle/dbw_enabled', Bool, self.dbw_enabled_cb)
+        rospy.Subscriber('/final_waypoints', Lane, self.final_waypoints_cb)
 
         # Class Memebers
         self.twist_cmd_msg = None
@@ -73,7 +76,6 @@ class DBWNode(object):
             throttle, brake, steer = self.controller.control(self.twist_cmd_msg, self.current_vel_msg, self.dbw_enabled)
 
             self.publish(throttle,brake,steer)
-            # rospy.loginfo("~~:Here")
             rate.sleep()
 
     def publish(self, throttle, brake, steer):
@@ -90,9 +92,17 @@ class DBWNode(object):
 
         bcmd = BrakeCmd()
         bcmd.enable = True
-        bcmd.pedal_cmd_type = BrakeCmd.CMD_TORQUE
+        bcmd.pedal_cmd_type = BrakeCmd.CMD_PEDAL
         bcmd.pedal_cmd = brake
         self.brake_pub.publish(bcmd)
+
+    def distance(self, waypoints, wp1, wp2):
+        dist = 0
+        dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2  + (a.z-b.z)**2)
+        for i in range(wp1, wp2+1):
+            dist += dl(waypoints[wp1].pose.pose.position, waypoints[i].pose.pose.position)
+            wp1 = i
+        return dist
 
     def twist_cmd_cb(self, msg):
         # rospy.loginfo('~~:x:{} y:{} z:{} | ax:{} ay:{} az:{}'.format(msg.twist.linear.x,msg.twist.linear.y,msg.twist.linear.z,msg.twist.angular.x,msg.twist.angular.y,msg.twist.angular.z))
@@ -103,6 +113,9 @@ class DBWNode(object):
 
     def dbw_enabled_cb(self, msg):
         self.dbw_enabled = msg.data
+
+    def final_waypoints_cb(self, msg):
+        self.final_waypoints = msg.waypoints
 
 
 if __name__ == '__main__':

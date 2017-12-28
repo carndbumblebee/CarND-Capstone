@@ -6,6 +6,8 @@ from styx_msgs.msg import Lane, Waypoint
 from std_msgs.msg import Int32
 
 import math
+import copy
+import numpy as np
 
 '''
 This node will publish waypoints from the car's current position to some `x` distance ahead.
@@ -23,6 +25,8 @@ TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 '''
 
 LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this number
+SLOW_DOWN_DIST = 50
+STOP_DIST = 3
 
 class WaypointUpdater(object):
     def __init__(self):
@@ -43,8 +47,11 @@ class WaypointUpdater(object):
         self.closest_idx = None # index to the closest waypoint
         self.frame_id = None # frame id??
         self.new_waypoints = None # New waypoints to send to the vehicle
-        self.upcoming_traffic_light = None
-        self.current_velocity = None
+        self.upcoming_traffic_light = None # Waypoint of any upcoming red traffic light
+        self.current_velocity = None # Current Velocity of the vehicles
+        self.max_velocity = None
+        self.state = None # State of the vehicle ('GO', 'SLOW', 'STOP')
+        self.velocity_curve = None # Polyfit for deacceleration
 
         rospy.loginfo('~~:Starting Waypoint Updater Loop')
         self.loop()
@@ -54,64 +61,18 @@ class WaypointUpdater(object):
 
         while not rospy.is_shutdown():
 
-            if self.current_pose is None:
+            if self.current_pose is None or self.base_waypoints is None or self.upcoming_traffic_light is None:
                 continue
 
-            # rospy.loginfo('~~:Current Position-  x:{}, y:{}'.format(self.current_pose.position.x, self.current_pose.position.y))
             self.closest_idx = self.get_closest_waypoint(self.current_pose, self.base_waypoints)
-            self.new_waypoints = self.load_new_waypoints(self.closest_idx, self.base_waypoints)
+            self.new_waypoints = self.load_new_waypoints(self.closest_idx)
 
-            # rospy.loginfo('~~:Closest Waypoint - x:{}, y:{}'.format(self.new_waypoints[0].pose.pose.position.x, self.new_waypoints[0].pose.pose.position.y))
             lane = self.create_new_lane(self.frame_id, self.new_waypoints)
             self.final_waypoints_pub.publish(lane)
 
 
             rate.sleep()
         
-#region Callbacks
-
-    #### CALLBACKS ####
-
-    def pose_cb(self, msg):
-        # TODO: Implement
-        
-        # pos has stucture:
-        # geometry_msgs/Point position
-        #     float64 x
-        #     float64 y
-        #     float64 z
-        # geometry_msgs/Quaternion orientation
-        #     float64 x
-        #     float64 y
-        #     float64 z
-        #     float64 w
-        self.current_pose = msg.pose
-        self.frame_id = msg.header.frame_id
-        pass
-
-
-    def waypoints_cb(self, msg):
-        # TODO: Implement        
-        # Called once, save the waypoints
-        self.base_waypoints = msg.waypoints
-        
-
-
-    def traffic_waypoint_cb(self, msg):
-        # TODO: Callback for /traffic_waypoint message. Implement
-        self.upcoming_traffic_light = msg.data
-        pass
-
-    def obstacle_cb(self, msg):
-        # TODO: Callback for /obstacle_waypoint message. We will implement it later
-        pass
-
-    def current_velocity_cb(self, msg):
-        self.current_velocity = msg.twist.linear.x
-
-
-#endregion
-
 #region Helper Functions
 
     #### HELPER FUNCTIONS ####
@@ -149,33 +110,43 @@ class WaypointUpdater(object):
         dy = p1.y - p2.y
         return dx*dx + dy*dy
 
-    def load_new_waypoints(self, start_idx, waypoints):
+    def load_new_waypoints(self, start_idx):
         """ Creates a list of new waypoints starting from the idx of the closest waypoint """
 
-        # Check that there are enough points left
-        end_idx = min(len(waypoints), start_idx + LOOKAHEAD_WPS)
+        # Decision Making
+        if self.upcoming_traffic_light == -1:
+            self.state = 'GO'
+        else:
+            # Get distance to traffic light
+            dist_to_tl = self.distance(self.base_waypoints, start_idx, self.upcoming_traffic_light)
 
-        new_waypoints = waypoints[start_idx:end_idx]
+            rospy.loginfo('~~:dist to tl: {}'.format(dist_to_tl))
 
-        if self.upcoming_traffic_light is None:
-            return new_waypoints
+            if dist_to_tl > SLOW_DOWN_DIST: # dont need to slow down till within x m
+                self.state = 'GO'
+            elif dist_to_tl > STOP_DIST: # Slow down when more than x m away
+                self.state = 'SLOW'
+            else: # Stop when within x m of the TL
+                self.state = 'STOP'
 
-        rospy.loginfo('~~:current_vel: {}'.format(self.convert_ms_to_kph(self.current_velocity)))
+        # Waypoint creation
+        new_waypoints = []
+        for idx in range(LOOKAHEAD_WPS):
+            waypoint = copy.deepcopy(self.base_waypoints[start_idx+idx])
 
-        if self.upcoming_traffic_light != -1:
-            dist_to_slow = self.upcoming_traffic_light - start_idx
+            if self.state == 'GO':
+                new_velocity = self.get_waypoint_velocity(waypoint)
+            
+            elif self.state == 'SLOW':
+                dist_to_tl = self.distance(self.base_waypoints, start_idx+idx, self.upcoming_traffic_light)
+                new_velocity = self.velocity_profile(dist_to_tl)
 
-            if dist_to_slow > 1:
-                speed_decrease = self.convert_ms_to_kph(self.current_velocity) / dist_to_slow
             else:
-                speed_decrease = 0
+                new_velocity = 0.0
 
-            rospy.loginfo('~~:dist_to_slow: {} | speed_decrease: {}'.format(dist_to_slow, speed_decrease))
-            # speed = self.convert_ms_to_kph(self.current_velocity)
-            # for i in range(dist_to_slow):
-            #     new_waypoints[i].twist.twist.linear.x = speed
-            #     speed = max(0, speed-speed_decrease)
-            #     rospy.loginfo('~~:speed:{}'.format(speed))
+            self.set_waypoint_velocity([waypoint], 0, new_velocity)
+
+            new_waypoints.append(waypoint)
 
         return new_waypoints
 
@@ -186,11 +157,72 @@ class WaypointUpdater(object):
         new_lane.header.stamp = rospy.Time.now()
         return new_lane
 
-    def convert_ms_to_kph(self, speed_ms):
-        return speed_ms*3.6
+    def velocity_profile(self, distance):
+        """ defines the velocity profile for slowing down """
+
+        # Create curve if not already done
+        if self.velocity_curve is None:
+            self.create_curve()
+
+        if distance < STOP_DIST: # Want to be stopped within 5m of the light
+            return 0.0
+        else:
+            return self.velocity_curve(-distance) # negative distance for the curve. No reason, justs looks better in plot
+
+    def create_curve(self):
+        x = [-SLOW_DOWN_DIST, -STOP_DIST]
+        y = [self.max_velocity, 0]
+
+        # fit curve to the profile
+        coeffs = np.polyfit(x,y,1)
+        self.velocity_curve = np.poly1d(coeffs)
 
 
 #endregion
+
+#region Callbacks
+
+    #### CALLBACKS ####
+
+    def pose_cb(self, msg):
+        # TODO: Implement
+        
+        # pos has stucture:
+        # geometry_msgs/Point position
+        #     float64 x
+        #     float64 y
+        #     float64 z
+        # geometry_msgs/Quaternion orientation
+        #     float64 x
+        #     float64 y
+        #     float64 z
+        #     float64 w
+        self.current_pose = msg.pose
+        self.frame_id = msg.header.frame_id
+        pass
+
+
+    def waypoints_cb(self, msg):
+        # TODO: Implement        
+        # Called once, save the waypoints
+        self.base_waypoints = msg.waypoints
+        self.max_velocity = self.get_waypoint_velocity(self.base_waypoints[1000])
+
+    def traffic_waypoint_cb(self, msg):
+        # TODO: Callback for /traffic_waypoint message. Implement
+        self.upcoming_traffic_light = msg.data
+        pass
+
+    def obstacle_cb(self, msg):
+        # TODO: Callback for /obstacle_waypoint message. We will implement it later
+        pass
+
+    def current_velocity_cb(self, msg):
+        self.current_velocity = msg.twist.linear.x
+
+
+#endregion
+
 
 if __name__ == '__main__':
     try:
