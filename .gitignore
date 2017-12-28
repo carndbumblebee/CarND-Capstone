@@ -17,3 +17,5 @@ data/dbw_test\.rosbag\.bag
 ros/src/tl_detector/light_classification/dataset_train_rgb/*
 ros/src/tl_detector/light_classification/dataset_test_rgb/*
 ros/src/tl_detector/light_classification/traffic_light_images/*
+ros/src/tl_detector/light_classification/site_images_traffic_only/*
+ros/src/tl_detector/light_classification/site_traffic_light_images_out/*
